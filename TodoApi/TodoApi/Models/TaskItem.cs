@@ -8,4 +8,5 @@ public class TaskItem
     public DateTime Date { get; set; }
     public int Priority { get; set; } = 2;   // 1 = Low, 2 = Medium, 3 = High
     public bool IsCompleted { get; set; }
+    public int UserId { get; set; }
 }

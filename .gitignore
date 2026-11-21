@@ -1,0 +1,17 @@
+# .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+
+# Flutter / Dart
+.dart_tool/
+build/
+.idea/
+local.properties
+*.iml
+.gradle/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:todolistapp/model/task.dart';
 import '../db/task_repository.dart';
 import 'addnewtask.dart';
+import '../services/auth_service.dart';
+import 'auth_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -46,6 +48,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void showMessage(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> logout() async {
+    await AuthService().logout();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const AuthScreen()),
+      (route) => false,
+    );
   }
 
   List<Task> get visibleTasks {
@@ -333,6 +345,11 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
             onPressed: loadTasks,
+          ),
+          IconButton(
+            tooltip: 'Log out',
+            icon: const Icon(Icons.logout),
+            onPressed: logout,
           ),
         ],
       ),

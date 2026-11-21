@@ -133,17 +133,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Widget priorityOption(String label, int value) {
     return RadioListTile<int>(
       value: value,
-      groupValue: priority,
       title: Text(label),
       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
       activeColor: Theme.of(context).colorScheme.primary,
-      onChanged: (int? newValue) {
-        if (newValue != null) {
-          setState(() {
-            priority = newValue;
-          });
-        }
-      },
     );
   }
 
@@ -194,12 +186,22 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 SizedBox(height: 24),
                 sectionTitle('Priority', required: true),
                 Card(
-                  child: Column(
-                    children: [
-                      priorityOption('Low', 1),
-                      priorityOption('Medium', 2),
-                      priorityOption('High', 3),
-                    ],
+                  child: RadioGroup<int>(
+                    groupValue: priority,
+                    onChanged: (int? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          priority = newValue;
+                        });
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        priorityOption('Low', 1),
+                        priorityOption('Medium', 2),
+                        priorityOption('High', 3),
+                      ],
+                    ),
                   ),
                 ),
                 SizedBox(height: 28),

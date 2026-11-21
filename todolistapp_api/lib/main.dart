@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'AppTheme/appTheme.dart';
 import 'Screens/homescreen.dart';
-import 'db/dbhelper.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await DBHelper.instance.database;
+void main() {
   runApp(const MyApp());
 }
 

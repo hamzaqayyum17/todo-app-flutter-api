@@ -16,7 +16,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   TextEditingController descriptionController = TextEditingController();
   DateTime selectedDate = DateTime.now();
   int priority = 2;
-
+  bool isSaving = false;
   bool get isEditing => widget.task != null;
 
   @override
@@ -66,6 +66,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   }
 
   Future<void> saveTask() async {
+    if (isSaving) return; // ignore double taps
+
     final title = titleController.text.trim();
 
     if (title.isEmpty) {
@@ -74,6 +76,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       ).showSnackBar(const SnackBar(content: Text('Title is required')));
       return;
     }
+
+    setState(() {
+      isSaving = true;
+    });
 
     try {
       if (isEditing) {
@@ -95,6 +101,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      setState(() {
+        isSaving = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Could not save the task. Is the server running?'),
@@ -104,10 +113,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     }
 
     if (!mounted) return;
-    Navigator.pop(context);
-
-    if (!mounted) return;
-    Navigator.pop(context);
+    Navigator.pop(context); // the only pop in this method
   }
 
   @override

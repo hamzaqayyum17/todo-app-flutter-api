@@ -16,8 +16,8 @@ public class AppDbContext : DbContext
     {
         modelBuilder.Entity<User>(e =>
         {
-            e.Property(u => u.Username).HasMaxLength(50);
-            e.HasIndex(u => u.Username).IsUnique(); // no two users with the same name
+            e.Property(u => u.Email).HasMaxLength(254);
+            e.HasIndex(u => u.Email).IsUnique(); // the database itself refuses duplicates
         });
 
         // Every task belongs to one user.

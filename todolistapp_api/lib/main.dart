@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'AppTheme/appTheme.dart';
 import 'Screens/homescreen.dart';
+import 'services/auth_service.dart';
+import 'services/session.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Session.load();
+
+  // ---- TEMPORARY TEST: remove after checking ----
+  try {
+    await AuthService().login('hamza', 'secret123');
+    debugPrint('Login OK. Token starts with: ${Session.token!.substring(0, 20)}');
+  } catch (e) {
+    debugPrint('Login failed: $e');
+  }
+  // ------------------------------------------------
+
   runApp(const MyApp());
 }
 

@@ -37,8 +37,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         isLoading = false;
-        errorMessage =
-            'Cannot reach the server.\nCheck that the API is running and the phone is on the same Wi-Fi.';
+        errorMessage = e is UnauthorizedException
+            ? e.toString()
+            : 'Cannot reach the server.\nCheck that the API is running and the phone is on the same Wi-Fi.';
       });
     }
   }
@@ -347,8 +348,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          :errorMessage!=null
-          ?buildError()
+          : errorMessage != null
+          ? buildError()
           : Column(
               children: [
                 buildFilterBar(),

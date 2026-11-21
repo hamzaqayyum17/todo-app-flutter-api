@@ -75,23 +75,36 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       return;
     }
 
-    if (isEditing) {
-      final t = widget.task!;
-      t.title = title;
-      t.description = descriptionController.text.trim();
-      t.date = selectedDate;
-      t.priority = priority;
-      await repo.update(t);
-    } else {
-      await repo.insert(
-        Task(
-          title: title,
-          description: descriptionController.text.trim(),
-          date: selectedDate,
-          priority: priority,
+    try {
+      if (isEditing) {
+        final t = widget.task!;
+        t.title = title;
+        t.description = descriptionController.text.trim();
+        t.date = selectedDate;
+        t.priority = priority;
+        await repo.update(t);
+      } else {
+        await repo.insert(
+          Task(
+            title: title,
+            description: descriptionController.text.trim(),
+            date: selectedDate,
+            priority: priority,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save the task. Is the server running?'),
         ),
       );
+      return;
     }
+
+    if (!mounted) return;
+    Navigator.pop(context);
 
     if (!mounted) return;
     Navigator.pop(context);

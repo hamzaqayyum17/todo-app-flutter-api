@@ -16,6 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Task> tasks = []; // now loaded from the database
   bool isLoading = true;
   String filter = 'All'; // All, Pending, Done
+  String? errorMessage;
 
   @override
   void initState() {
@@ -24,12 +25,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> loadTasks() async {
-    final result = await repo.getAll();
-    if (!mounted) return;
-    setState(() {
-      tasks = result;
-      isLoading = false;
-    });
+    try {
+      final result = await repo.getAll();
+      if (!mounted) return;
+      setState(() {
+        tasks = result;
+        isLoading = false;
+        errorMessage = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        errorMessage =
+            'Cannot reach the server.\nCheck that the API is running and the phone is on the same Wi-Fi.';
+      });
+    }
+  }
+
+  void showMessage(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   List<Task> get visibleTasks {
@@ -75,14 +90,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (confirm != true) return;
 
-    await repo.delete(task.id!);
-    await loadTasks();
+    try {
+      await repo.delete(task.id!);
+      await loadTasks();
+    } catch (e) {
+      showMessage('Could not delete the task. Is the server running?');
+    }
   }
 
   Future<void> toggleComplete(Task task) async {
-    task.isCompleted = !task.isCompleted;
-    await repo.update(task);
-    await loadTasks();
+    final bool old = task.isCompleted;
+    task.isCompleted = !old;
+    try {
+      await repo.update(task);
+      await loadTasks();
+    } catch (e) {
+      task.isCompleted = old; // undo the change
+      showMessage('Could not update the task. Is the server running?');
+      if (mounted) setState(() {});
+    }
   }
 
   Future<void> openEditScreen(Task task) async {
@@ -91,6 +117,33 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(builder: (_) => AddTaskScreen(task: task)),
     );
     await loadTasks();
+  }
+
+  Widget buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off, size: 48),
+            const SizedBox(height: 12),
+            Text(errorMessage!, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  isLoading = true;
+                });
+                loadTasks();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget buildFilterBar() {
@@ -294,6 +347,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
+          :errorMessage!=null
+          ?buildError()
           : Column(
               children: [
                 buildFilterBar(),

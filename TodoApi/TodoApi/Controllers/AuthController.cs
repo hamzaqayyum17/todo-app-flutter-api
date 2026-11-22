@@ -17,7 +17,7 @@ namespace TodoApi.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private const int AccessTokenMinutes = 1;
+    private const int AccessTokenMinutes = 15;
     private const int RefreshTokenDays = 30;
     private const int OtpLifetimeMinutes = 10;
     private const int MaxOtpAttempts = 5;

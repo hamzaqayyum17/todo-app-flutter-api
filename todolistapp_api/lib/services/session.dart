@@ -1,11 +1,13 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Holds the logged-in user's token, in memory and on the phone.
 class Session {
   static String? token;
-  static String? username;
+  static String? email;
 
-  static const String _tokenKey = 'auth_token';
-  static const String _userKey = 'auth_username';
+  // New key names: a token saved by the old username-based version is ignored.
+  static const String _tokenKey = 'auth_token_v2';
+  static const String _emailKey = 'auth_email';
 
   static bool get isLoggedIn => token != null;
 
@@ -13,22 +15,22 @@ class Session {
   static Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     token = prefs.getString(_tokenKey);
-    username = prefs.getString(_userKey);
+    email = prefs.getString(_emailKey);
   }
 
-  static Future<void> save(String newToken, String newUsername) async {
+  static Future<void> save(String newToken, String newEmail) async {
     token = newToken;
-    username = newUsername;
+    email = newEmail;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, newToken);
-    await prefs.setString(_userKey, newUsername);
+    await prefs.setString(_emailKey, newEmail);
   }
 
   static Future<void> clear() async {
     token = null;
-    username = null;
+    email = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
-    await prefs.remove(_userKey);
+    await prefs.remove(_emailKey);
   }
 }

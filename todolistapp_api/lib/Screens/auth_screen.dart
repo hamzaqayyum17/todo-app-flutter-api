@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'homescreen.dart';
+import 'otp_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -10,7 +11,7 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final AuthService auth = AuthService();
 
@@ -22,12 +23,24 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> submit() async {
     if (isBusy) return;
 
-    final username = usernameController.text.trim();
+    final email = emailController.text.trim().toLowerCase();
     final password = passwordController.text;
 
-    if (username.isEmpty || password.isEmpty) {
+    if (!email.contains('@') || !email.contains('.')) {
       setState(() {
-        errorText = 'Enter a username and password.';
+        errorText = 'Enter a valid email address.';
+      });
+      return;
+    }
+    if (password.isEmpty) {
+      setState(() {
+        errorText = 'Enter your password.';
+      });
+      return;
+    }
+    if (!isLogin && password.length < 8) {
+      setState(() {
+        errorText = 'Password must be at least 8 characters.';
       });
       return;
     }
@@ -39,36 +52,55 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       if (isLogin) {
-        await auth.login(username, password);
+        await auth.login(email, password);
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
       } else {
-        await auth.register(username, password);
+        await auth.register(email, password);
+
+        if (!mounted) return;
+        setState(() {
+          isBusy = false;
+        });
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => OtpScreen(email: email)),
+        );
       }
+    } on EmailNotVerifiedException {
+      // Right password, but the email was never verified: send a new code.
+      if (!mounted) return;
+      setState(() {
+        isBusy = false;
+      });
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OtpScreen(email: email, sendCodeOnOpen: true),
+        ),
+      );
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
         isBusy = false;
         errorText = e.message;
       });
-      return;
     } catch (_) {
       if (!mounted) return;
       setState(() {
         isBusy = false;
         errorText = 'Something went wrong. Please try again.';
       });
-      return;
     }
-
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
   }
 
   @override
   void dispose() {
-    usernameController.dispose();
+    emailController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -99,12 +131,13 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: 28),
 
                 TextField(
-                  controller: usernameController,
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
                   decoration: const InputDecoration(
-                    labelText: 'Username',
-                    prefixIcon: Icon(Icons.person_outline),
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email_outlined),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -114,7 +147,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   obscureText: hidePassword,
                   onSubmitted: (_) => submit(),
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: isLogin ? 'Password' : 'Password (min 8 characters)',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(

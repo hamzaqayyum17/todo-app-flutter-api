@@ -17,6 +17,8 @@ namespace TodoApi.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    private const int AccessTokenMinutes = 1;
+    private const int RefreshTokenDays = 30;
     private const int OtpLifetimeMinutes = 10;
     private const int MaxOtpAttempts = 5;
     private const int ResendCooldownSeconds = 60;
@@ -107,9 +109,8 @@ public class AuthController : ControllerBase
         user.OtpExpiresAt = null;
         user.OtpSentAt = null;
         user.OtpFailedAttempts = 0;
-        await _db.SaveChangesAsync();
 
-        return new AuthResponse(CreateToken(user), user.Email);
+        return await IssueTokensAsync(user); // also saves the changes above
     }
 
     // POST /api/auth/resend-otp
@@ -150,10 +151,85 @@ public class AuthController : ControllerBase
         if (!user.IsEmailVerified)
             return StatusCode(403, "Please verify your email first.");
 
-        return new AuthResponse(CreateToken(user), user.Email);
+        return await IssueTokensAsync(user);
+    }
+
+    // POST /api/auth/refresh
+    [HttpPost("refresh")]
+    public async Task<ActionResult<AuthResponse>> Refresh(RefreshRequest request)
+    {
+        var hash = HashToken(request.RefreshToken);
+
+        var stored = await _db.RefreshTokens
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.TokenHash == hash);
+
+        if (stored == null)
+            return Unauthorized("Invalid session. Please log in again.");
+
+        if (stored.RevokedAt != null)
+        {
+            // A token that was already used is back. It may have been stolen,
+            // so end every active session of this user.
+            var active = await _db.RefreshTokens
+                .Where(t => t.UserId == stored.UserId && t.RevokedAt == null)
+                .ToListAsync();
+
+            foreach (var t in active)
+                t.RevokedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return Unauthorized("Session is no longer valid. Please log in again.");
+        }
+
+        if (stored.ExpiresAt < DateTime.UtcNow)
+            return Unauthorized("Session expired. Please log in again.");
+
+        // Rotation: the old refresh token is used up, a new pair is issued.
+        stored.RevokedAt = DateTime.UtcNow;
+        return await IssueTokensAsync(stored.User);
+    }
+
+    // POST /api/auth/logout
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(RefreshRequest request)
+    {
+        var hash = HashToken(request.RefreshToken);
+
+        var stored = await _db.RefreshTokens
+            .FirstOrDefaultAsync(t => t.TokenHash == hash && t.RevokedAt == null);
+
+        if (stored != null)
+        {
+            stored.RevokedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        return NoContent();
     }
 
     // ---------- helpers ----------
+
+    private async Task<AuthResponse> IssueTokensAsync(User user)
+    {
+        // 64 random bytes, written in a URL-safe way.
+        var rawRefresh = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
+            .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+
+        _db.RefreshTokens.Add(new RefreshToken
+        {
+            UserId = user.Id,
+            TokenHash = HashToken(rawRefresh),
+            ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenDays)
+        });
+
+        await _db.SaveChangesAsync();
+
+        return new AuthResponse(CreateToken(user), rawRefresh, user.Email);
+    }
+
+    private static string HashToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
     private async Task<bool> TrySendOtpAsync(User user)
     {
@@ -226,7 +302,7 @@ public class AuthController : ControllerBase
             }),
             Issuer = _config["Jwt:Issuer"],
             Audience = _config["Jwt:Audience"],
-            Expires = DateTime.UtcNow.AddDays(7),
+            Expires = DateTime.UtcNow.AddMinutes(AccessTokenMinutes),
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
         };
 

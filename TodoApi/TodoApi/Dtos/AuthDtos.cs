@@ -17,6 +17,11 @@ public class EmailRequest
     public string Email { get; set; } = string.Empty;
 }
 
-public record AuthResponse(string Token, string Email);
+public class RefreshRequest
+{
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
+public record AuthResponse(string Token, string RefreshToken, string Email);
 
 public record MessageResponse(string Message);

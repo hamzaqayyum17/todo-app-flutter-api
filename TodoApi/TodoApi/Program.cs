@@ -9,7 +9,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers(options =>
 {
-    // Without this, an empty description would be rejected with a 400 error.
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
 });
 
@@ -31,6 +30,7 @@ builder.Services
             ValidateAudience = true,
             ValidAudience = builder.Configuration["Jwt:Audience"],
             ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(10),
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using TodoApi.Data;
+using TodoApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder.Services.AddControllers(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddScoped<IEmailSender, EmailSender>();
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is missing. Check your user secrets.");
 
@@ -50,5 +52,17 @@ app.UseAuthorization();    // 2. are they allowed in?
 
 app.MapControllers();
 app.MapGet("/", () => "Todo API is running");
+
+
+// TEMPORARY: remove after testing. Development only.
+if (app.Environment.IsDevelopment())
+{
+    app.MapPost("/dev/test-email", async (string to, IEmailSender email) =>
+    {
+        await email.SendAsync(to, "Todo App test",
+            "<p>If you can read this, email sending works.</p>");
+        return Results.Ok("Done. Check your inbox, or the terminal in dev mode.");
+    });
+}
 
 app.Run();

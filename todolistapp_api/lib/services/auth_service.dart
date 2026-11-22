@@ -1,3 +1,5 @@
+// lib/services/auth_service.dart
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config.dart';
@@ -14,7 +16,7 @@ class AuthException implements Exception {
 
 /// Thrown when the password is right but the email is not verified yet.
 class EmailNotVerifiedException extends AuthException {
-  EmailNotVerifiedException(String message) : super(message);
+  EmailNotVerifiedException(super.message);
 }
 
 class AuthService {
@@ -46,7 +48,7 @@ class AuthService {
     }
   }
 
-  // POST /api/auth/verify-email  (returns the token)
+  // POST /api/auth/verify-email  (returns the tokens)
   Future<void> verifyEmail(String email, String code) async {
     final response =
         await _post('verify-email', {'email': email, 'code': code});
@@ -67,7 +69,31 @@ class AuthService {
     }
   }
 
-  Future<void> logout() => Session.clear();
+  Future<void> logout() async {
+    final refresh = Session.refreshToken;
+
+    // Logged out on the phone right away...
+    await Session.clear();
+
+    // ...and the refresh token is cancelled on the server in the background.
+    if (refresh != null) {
+      unawaited(_revokeOnServer(refresh));
+    }
+  }
+
+  Future<void> _revokeOnServer(String refresh) async {
+    try {
+      await http
+          .post(
+            Uri.parse('$_base/logout'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'refreshToken': refresh}),
+          )
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // If the server is unreachable, the token simply expires on its own.
+    }
+  }
 
   Future<http.Response> _post(String action, Map<String, dynamic> body) async {
     try {
@@ -87,7 +113,11 @@ class AuthService {
 
   Future<void> _saveSession(http.Response response) async {
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    await Session.save(data['token'] as String, data['email'] as String);
+    await Session.save(
+      data['token'] as String,
+      data['refreshToken'] as String,
+      data['email'] as String,
+    );
   }
 
   // The API answers errors with a short plain-text message.

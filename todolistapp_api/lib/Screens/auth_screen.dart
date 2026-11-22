@@ -4,7 +4,9 @@ import 'homescreen.dart';
 import 'otp_screen.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  final String? notice;
+
+  const AuthScreen({super.key, this.notice});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -19,6 +21,12 @@ class _AuthScreenState extends State<AuthScreen> {
   bool isBusy = false;
   bool hidePassword = true;
   String? errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    errorText = widget.notice;
+  }
 
   Future<void> submit() async {
     if (isBusy) return;

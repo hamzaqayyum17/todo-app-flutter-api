@@ -1,34 +1,13 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config.dart';
 import '../model/task.dart';
-import '../services/session.dart';
-
-/// Thrown when the API says the token is missing, wrong, or expired.
-class UnauthorizedException implements Exception {
-  @override
-  String toString() => 'Your session has expired. Please log in again.';
-}
+import '../services/api_client.dart';
 
 class TaskRepository {
-  final String _url = '${ApiConfig.baseUrl}/api/tasks';
-  final Duration _timeout = const Duration(seconds: 10);
-
-  // A getter, so the current token is read at the moment of each request.
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        if (Session.token != null) 'Authorization': 'Bearer ${Session.token}',
-      };
-
-  void _checkAuth(http.Response response) {
-    if (response.statusCode == 401) throw UnauthorizedException();
-  }
+  static const String _path = '/api/tasks';
 
   // GET /api/tasks
   Future<List<Task>> getAll() async {
-    final response =
-        await http.get(Uri.parse(_url), headers: _headers).timeout(_timeout);
-    _checkAuth(response);
+    final response = await ApiClient.get(_path);
 
     if (response.statusCode != 200) {
       throw Exception('Failed to load tasks (${response.statusCode})');
@@ -42,14 +21,7 @@ class TaskRepository {
 
   // POST /api/tasks
   Future<int> insert(Task task) async {
-    final response = await http
-        .post(
-          Uri.parse(_url),
-          headers: _headers,
-          body: jsonEncode(task.toJson()),
-        )
-        .timeout(_timeout);
-    _checkAuth(response);
+    final response = await ApiClient.post(_path, task.toJson());
 
     if (response.statusCode != 201) {
       throw Exception('Failed to add task (${response.statusCode})');
@@ -60,14 +32,7 @@ class TaskRepository {
 
   // PUT /api/tasks/{id}
   Future<void> update(Task task) async {
-    final response = await http
-        .put(
-          Uri.parse('$_url/${task.id}'),
-          headers: _headers,
-          body: jsonEncode(task.toJson()),
-        )
-        .timeout(_timeout);
-    _checkAuth(response);
+    final response = await ApiClient.put('$_path/${task.id}', task.toJson());
 
     if (response.statusCode != 204) {
       throw Exception('Failed to update task (${response.statusCode})');
@@ -76,10 +41,7 @@ class TaskRepository {
 
   // DELETE /api/tasks/{id}
   Future<void> delete(int id) async {
-    final response = await http
-        .delete(Uri.parse('$_url/$id'), headers: _headers)
-        .timeout(_timeout);
-    _checkAuth(response);
+    final response = await ApiClient.delete('$_path/$id');
 
     if (response.statusCode != 204) {
       throw Exception('Failed to delete task (${response.statusCode})');
